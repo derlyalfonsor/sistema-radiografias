@@ -9,8 +9,8 @@ app.use(express.json());
 
 // Conexión a MongoDB
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Conectado a MongoDB'))
-  .catch(err => console.error('Error de conexión:', err));
+  .then(() => console.log('✅ Conectado a MongoDB'))
+  .catch(err => console.error('❌ Error de conexión a MongoDB:', err));
 
 // Modelo de Paciente
 const pacienteSchema = new mongoose.Schema({
@@ -19,18 +19,41 @@ const pacienteSchema = new mongoose.Schema({
   radiografias: [{
     idRadiografia: String,
     tipo: String,
-    estado: { type: String, enum: ['pendiente', 'lista', 'revisada'] }
+    estado: { 
+      type: String, 
+      enum: ['pendiente', 'lista', 'revisada'],
+      default: 'pendiente'
+    },
+    fechaNotificacion: Date
   }]
 });
 
 const Paciente = mongoose.model('Paciente', pacienteSchema);
 
-// Función de notificación SIMPLIFICADA (solo consola)
+// Función de notificación (simulada)
 async function notificarPaciente(paciente, radiografia) {
-  console.log(`[Notificación] Radiografía de ${radiografia.tipo} lista para ${paciente.nombre}`);
+  const mensaje = `📄 Radiografía de ${radiografia.tipo} lista para ${paciente.nombre}`;
+  console.log(mensaje);
+  
+  // Actualiza fecha de notificación
+  radiografia.fechaNotificacion = new Date();
+  await paciente.save();
 }
 
-// Rutas
+// Ruta de inicio
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>🚀 API de Radiografías</h1>
+    <p>Endpoints disponibles:</p>
+    <ul>
+      <li><strong>POST</strong> /api/pacientes - Crear paciente</li>
+      <li><strong>PUT</strong> /api/pacientes/:id/radiografias/:idRad - Actualizar estado</li>
+      <li><strong>GET</strong> /api/pacientes - Listar todos los pacientes</li>
+    </ul>
+  `);
+});
+
+// Crear paciente
 app.post('/api/pacientes', async (req, res) => {
   try {
     const paciente = new Paciente(req.body);
@@ -41,6 +64,7 @@ app.post('/api/pacientes', async (req, res) => {
   }
 });
 
+// Actualizar radiografía
 app.put('/api/pacientes/:id/radiografias/:idRad', async (req, res) => {
   try {
     const paciente = await Paciente.findById(req.params.id);
@@ -49,7 +73,7 @@ app.put('/api/pacientes/:id/radiografias/:idRad', async (req, res) => {
     radiografia.estado = req.body.estado;
     
     if (radiografia.estado === 'lista') {
-      await notificarPaciente(paciente, radiografia); // Notificación en consola
+      await notificarPaciente(paciente, radiografia);
     }
 
     await paciente.save();
@@ -59,5 +83,15 @@ app.put('/api/pacientes/:id/radiografias/:idRad', async (req, res) => {
   }
 });
 
+// Listar pacientes (nuevo endpoint)
+app.get('/api/pacientes', async (req, res) => {
+  try {
+    const pacientes = await Paciente.find();
+    res.json(pacientes);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🖥️ Servidor corriendo en puerto ${PORT}`));
