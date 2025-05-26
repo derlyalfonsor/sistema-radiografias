@@ -30,25 +30,23 @@ const pacienteSchema = new mongoose.Schema({
 
 const Paciente = mongoose.model('Paciente', pacienteSchema);
 
-// Función de notificación (simulada)
+// Función de notificación
 async function notificarPaciente(paciente, radiografia) {
-  const mensaje = `📄 Radiografía de ${radiografia.tipo} lista para ${paciente.nombre}`;
-  console.log(mensaje);
-  
-  // Actualiza fecha de notificación
   radiografia.fechaNotificacion = new Date();
   await paciente.save();
+  console.log(`📄 Radiografía ${radiografia.idRadiografia} (${radiografia.tipo}) lista para ${paciente.nombre}`);
 }
 
 // Ruta de inicio
 app.get('/', (req, res) => {
   res.send(`
     <h1>🚀 API de Radiografías</h1>
-    <p>Endpoints disponibles:</p>
+    <p><strong>Endpoints:</strong></p>
     <ul>
-      <li><strong>POST</strong> /api/pacientes - Crear paciente</li>
-      <li><strong>PUT</strong> /api/pacientes/:id/radiografias/:idRad - Actualizar estado</li>
-      <li><strong>GET</strong> /api/pacientes - Listar todos los pacientes</li>
+      <li>POST /api/pacientes - Crear paciente</li>
+      <li>PUT /api/pacientes/:id/radiografias/:idRad - Actualizar estado</li>
+      <li>GET /api/pacientes - Listar todos</li>
+      <li>GET /api/pacientes/:id/radiografias-listas - Radiografías listas</li>
     </ul>
   `);
 });
@@ -83,7 +81,7 @@ app.put('/api/pacientes/:id/radiografias/:idRad', async (req, res) => {
   }
 });
 
-// Listar pacientes (nuevo endpoint)
+// Listar todos los pacientes
 app.get('/api/pacientes', async (req, res) => {
   try {
     const pacientes = await Paciente.find();
@@ -93,5 +91,22 @@ app.get('/api/pacientes', async (req, res) => {
   }
 });
 
+// Endpoint NUEVO: Radiografías listas de un paciente
+app.get('/api/pacientes/:id/radiografias-listas', async (req, res) => {
+  try {
+    const paciente = await Paciente.findById(req.params.id);
+    const radiografiasListas = paciente.radiografias.filter(
+      r => r.estado === 'lista'
+    );
+    res.json({
+      paciente: paciente.nombre,
+      radiografiasListas: radiografiasListas,
+      total: radiografiasListas.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🖥️ Servidor corriendo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🖥️ Servidor en puerto ${PORT}`));
